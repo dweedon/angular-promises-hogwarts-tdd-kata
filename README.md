@@ -326,7 +326,9 @@ describe('courseCatalog Component', function() {
 ### 1.3\. Refactor
 Looks good to me, what do you think? **No repeating code, but that sure is a lot of test code for such a small implementation detail.**
 
-Yes, it is, and you might be fine with expecting component binding to just work, but this is a TDD Kata, no new code without tests. If we were using a module loader we could just bring in the component object and assert that the bindings are what we expect them to be, rather than how we are doing it here, which tests the effects of the binding.
+Yes, it is, and you might be fine with expecting component binding to just work, but this is a TDD Kata, no new code without tests.
+
+_If we were using a module loader, (we actually are, but the code is all written as if we weren't) we could just bring in the component object and assert that the bindings are what we expect them to be...__
 
 So are we finished with the story? **No, Professor Longbottom. Before calling a story done, it must be tested and deployed.**
 
@@ -765,121 +767,25 @@ Yes that is another story. **Then, the software works as expected. The code is c
 
 Congratulations, two points for Hufflepuff. Now, as soon as I get this Leg-Locker Curse off, we can go to the Quidditch match.
 
-## Story 3: Hat Sorts Randomly
-
-Acceptance: Clicking multiple times will result in all houses being selected.
-
---------------------------------------------------------------------------------
-
-We have a disaster, a crisis of epic proportion! Sorting Hat is celebrating at Hogsmeade with Nymphadora Tonks' ghost and refuses to leave. The replacement, the old straw thing that sorted you, is sorting everything according to this Kata! **I am not sure I see the problem.**
-
-Everyone is being sorted into _Hufflepuff_! **Oh, no!, I could have been in Gryffindor! What can we do?**
-
-We must change the Kata immediately to sort randomly. **I am on it.**
-
-### 3\. Debugging
-
-How will you find the bug? **I could open the debugger on `index.html#/sorting`, set a break point inside `sorting-hat-controller.js` on `$scope.sort`, click the sorting hat and then follow the code in the debugger down until I find the bug.**
-
-You have tests, why not use them to help locate the bug? **I am not sure how.**
-
-Take a look in the directories, `app/sorting/` and `test/sorting/`. **Oh, I see we have no corresponding test file for `random-number-service.js` that is probably the bug location.**
-
-Sometime, you might have a test file but the test is missing. Code coverage can also help you find missing tests. **Good to know. Something is fishy with `Math.floor(Math.random() * (max - max)) + max;`**
-
-You now have a choice, _write a test_ or open the _debugger_. **I choose test (this is a TDD Kata after all).**
-
-### 3.1\. Failing
-
-**I will create the file `test/sorting/random-number-service-specs.js` with the following tests in it.**
-
-`test/sorting/random-number-service-specs.js`
-
-```javascript
-describe('randomNumberService', function () {
-    var service;
-    var stubMath;
-
-    beforeEach(function () {
-        module("hogwartsApp");
-        stubMath = sinon.stub(Math, 'random');
-        inject(function (randomNumberService) {
-            service = randomNumberService;
-        });
-    });
-
-    afterEach(function () {
-        stubMath.restore();
-    });
-
-    describe('when generating a random number in range 0 - 3', function () {
-
-        it ('returns 0 for random range 0.0 - 0.249', function() {
-            stubMath.returns(0.249);
-            expect(service.getInRange(0, 3)).toEqual(0);
-        });
-
-        it ('returns 1 for random range 0.25 - 0.49', function() {
-            stubMath.returns(0.49);
-            expect(service.getInRange(0, 3)).toEqual(1);
-        });
-
-        it ('returns 2 for random range 0.5 - 0.749', function() {
-            stubMath.returns(0.749);
-            expect(service.getInRange(0, 3)).toEqual(2);
-        });
-
-        it ('returns 3 for random range 0.75 - 1', function() {
-            stubMath.returns(0.99);
-            expect(service.getInRange(0, 3)).toEqual(3);
-        });
-
-    });
-
-});
-```
-
-Nice work with the test coverage. **Thank you, Professor.**
-
-### 3.1\. Passing
-
-**To get it to pass, I replace the `return` section with the correct algorithm (straight from Arithmancy class).**
-
-`app/sorting/random-number-service.js`
-
-```javascript
-...
-
-            return Math.floor(Math.random() * (max - min + 1)) + min;
-
-...
-```
-
-### 3.9\. End to End
-
-Have you looked at the website? **Yes students are now being sorted into different houses.**
-
-Excellent! Three points for Hufflepuff.
-
 # O.W.L.s and N.E.W.T.s
 
 The Kata is officially over and Stinksap's not poisonous. If you are here with working code, you are awarded an _Acceptable_ OWL. If you want a NEWT or a higher grade, complete some or all of the following stories/tasks.
 
-## 4\. Disallow Registering for Multiple Simultaneous Classes
+## 3\. Disallow Registering for Multiple Simultaneous Classes
 
 Acceptance: Students attempting to register for multiple classes at the same time will be shown a message saying this is not allowed and the second class will not be added to their schedule.
 
-## 5\. Allow Multiple Simultaneous Classes with a Time-Turner
+## 4\. Allow Multiple Simultaneous Classes with a Time-Turner
 
 Acceptance: Students with a time-turner are be allowed to register for multiple classes at the same time.
 
-## 6\. Refactor out the duplicated UI in Schedule and Catalog
+## 5\. Refactor out the duplicated UI in Catalog and Schedule
 
-Using `ng-include` remove duplication between
+Use a component to remove duplication between
 
-`wizard/schedule.html` and `catalog/catalog.html`
+`client/app/catalog/catalog.template.html` and `client/app/schedule/schedule.template.html`
 
-## 7\. Modify this Kata to Use a Todo List
+## 6\. Modify this Kata to Use a Todo List
 
 TDD gives you
 
@@ -893,7 +799,7 @@ This is often in your journal in a Todo list.
 
 Change this `README` to use a Todo list.
 
-## 8\. Add Automated Acceptance Tests
+## 7\. Add Automated Acceptance Tests
 
 When you favor mockist style TDD, you need automated Acceptance Tests.
 
