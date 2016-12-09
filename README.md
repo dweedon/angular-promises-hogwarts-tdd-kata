@@ -108,12 +108,12 @@ Do you remember how to cast the Dependency Injection spell? **I remember now.**
 
 **Accio Dependentiam Injecious**
 
-`client/app/catalog/catalog.module.spec.js`
+`client/app/catalog/catalog.controller.spec.js`
 
 ```javascript
 ...
 
-describe.('courseCatalogController', function() {
+describe('courseCatalogController', function() {
   var ctrl;
   var mockCourses;
   var courses = ['courses'];
@@ -143,9 +143,11 @@ describe.('courseCatalogController', function() {
       expect(mockCourses.getAll).to.have.been.calledOnce;
     });
   });
+});
 
 ...
 ```
+
 What are you doing inside `beforeEach`? **We are creating a mock `Courses` service and `$provide` the mock `Courses` service for `window.module('hogwarts')`. Then we `inject` a temporary `$rootScope` Angular's `$q` service and the `$componentController` service (for instatiating our controller) into our tests.**
 
 **We use `$provide` to mock out services and give them _to_ our app, and `inject` to pull existing services and tools _from_ our app**
@@ -236,6 +238,10 @@ Ahem. You can write a test for that? **Oh, yes, that's what I meant.**
     });
 
     ...
+
+  });
+
+...
 ```
 
 ### 1.2\. Passing
@@ -266,13 +272,18 @@ Excelent, is it working. **Yes, but now my other test is broken, `      TypeErro
 ```javascript
 ...
 
-describe('on init', function() {
+  describe('on init', function() {
     it('should get a list of courses', function() {
       var courses = ['courses'];
 
       mockCourses.getAll.returns($q.resolve(courses));
       
       ctrl.$onInit();
+    });
+
+    ...
+
+  });
 
 ...
 ```
@@ -315,80 +326,6 @@ But this is only a Kata, we will start on the real work next week when you have 
 You can see it by loading `localhost:3000` into your browser and clicking on Catalog (at the top). **I am seeing the page now.**
 
 Well done, young Wizard. You have finished your story. Another point for Hufflepuff. **Thank you, I like the write the test, see it fail, write code to make it pass, and then refactor rhythm. I also like seeing what the end user sees.**
-
-
-TODO: move to other test
-
-### 1.3\. Failing
-
-Are we finished with the story? **No, the catalog does not show up on the web page. The `catalog.template.html` UI expects an property called `catalog` on the controller. We need to get it from the route's resolve into the controller. Time to cast our Component Binding spell. Er, I mean, let's start with a test!**
-
-`client/app/catalog/catalog.component.spec.js`
-
-```javascript
-describe('courseCatalog Component', function() {
-  var ctrl;
-  var $scope;
-  var $compile;
-  var courses = ['courses'];
-
-  beforeEach(window.module('hogwarts', function($provide) {
-    $provide.value('Courses', { getAll: sinon.stub() });
-  }));
-
-  beforeEach(inject(function($rootScope, _$compile_) {
-    $scope = $rootScope.$new();
-    $compile = _$compile_;
-  }));
-
-  describe('bindings', function() {
-    beforeEach(function() {
-      var element = $compile(angular.element(
-        '<course-catalog courses="courses"></course-catalog>'
-      ))($scope);
-
-      $scope.courses = courses;
-      $scope.$apply();
-
-      ctrl = element.controller('courseCatalog');
-    });
-
-    it('should bind courses to the controller', function() {
-      expect(ctrl.courses).to.equal(courses);
-    });
-  });
-});
-```
-
-### 1.3\. Passing
-
-`client/app/catalog/catalog.component.js`
-
-```javascript
-...
-
-  restrict: 'E',
-  bindings: {
-    courses: '<',
-  },
-  templateUrl: 'catalog.template.html',
-
-...
-
-```
-
-### 1.3\. Refactor
-Looks good to me, what do you think? **No repeating code, but that sure is a lot of test code for such a small implementation detail.**
-
-Yes, it is, and you might be fine with expecting component binding to just work, but this is a TDD Kata, no new code without tests.
-
-_If we were using a module loader, (we actually are, but the code is all written as if we weren't) we could just bring in the component object and assert that the bindings are what we expect them to be...__
-
-So are we finished with the story? **No, Professor Longbottom. Before calling a story done, it must be tested and deployed.**
-
-But this is only a Kata, we will start on the real work next week when you have a pair. **Ok, I won't deploy it and I won't write automated acceptance tests. But I must inspect my beautiful work (and make sure it is working).**
-
-// TODO: Update this to the promise based code
 
 ## 2\. Story: Register for Courses
 
@@ -531,6 +468,9 @@ Next we need to show the student the result of their registration attempt. **I w
     });
 
     ...
+  });
+
+...
 ```
 
 ### 2.2\. Passing
@@ -557,7 +497,7 @@ I smell duplication in the test. **Yes and I am willing to remove it, while all 
 
 **Facio Abdo Duplicatam**
 
-`test/catalog/catalog-controller-specs.js`
+`client/app/catalog/catalog.controller.spec.js`
 
 ```javascript
 ...
@@ -600,8 +540,8 @@ describe('Registration Service', function() {
       expect(mockWizards.wizard).to.have.been.calledWith('1');
       expect(mockWizards.addCourse).to.have.been.calledWith(wizard, courseNumber);
     });
-
-    ...
+  });
+});
 ```
 
 You have a test that clearly states your intent: registering leads to a new course in the `wizardRepository`. **Yes but it won't run until I use the Dependency Injection spell again.**
@@ -643,6 +583,10 @@ describe('Registration Service', function () {
     });
 
   ...
+
+  });
+});
+
 ```
 
 ### 2.3\. Failing
@@ -674,13 +618,15 @@ angular.module('hogwarts.providers')
 ...
   
 .factory('Registration', function(Wizards) {
+  'ngInject';
 
-  ...
-
+  return {
     register: function(courseNumber) {
       var wizard = Wizards.wizard('1');
       Wizards.addCourse(wizard, courseNumber);
     },
+  }
+});
 
 ...
 
@@ -693,10 +639,8 @@ angular.module('hogwarts.providers')
 
 ```javascript
 ...
-
-    register: function(courseNumber) {
-      Wizards.addCourse(Wizards.wizard('1'), courseNumber);
-    },
+  
+    Wizards.addCourse(Wizards.wizard('1'), courseNumber);
 
 ...
 ```
@@ -729,8 +673,7 @@ A service should always return a response, in this case, we can chain off the pr
         expect(res.success).to.be.ok;
       });
     });
-
-    ...
+  });
 ```
 
 Sure, you can do it that way. You could also inject the `$q`, `$rootScope` and call a `$digest` before making your assertion. That is particularly useful if you chain several times, but this way is fine, especially in cases like this.
@@ -790,7 +733,7 @@ How will the student know if they are really registered? **They will see their c
 
 How will they see their courses on the schedule page? **Hmm, let's see. The `schedule.template.html` is already written. It looks like it expects a wizard object on the controller. The `wizard` has `courses`.**
 
-You are indeed a very promising young wizard. **I will write tests for the schedule controller. I'm going to try this one a different way. I will resolve the data before the view is loaded.**
+You are indeed a very promising young wizard. **I'm going to try this one a different way. I will resolve the data before the view is loaded.**
 
 `app/catalog/schedule/schedule.module.spec.js`
 
@@ -867,6 +810,8 @@ You can make the tests pass? **Yes, this is less painful than drinking a Polyjui
 
 ### 2.6\. Failing
 
+Are we finished with the story? **No, the wizard info does not show up on the schedule page. We need to get it from the route's resolve into the view. Time to cast our Component Binding spell. Er, I mean, let's start with a test!**
+
 Now we bind it to the component
 
 `client/app/schedule/schedule.component.spec.js`
@@ -926,6 +871,14 @@ angular.module('hogwarts.schedule')
 });
 
 ```
+
+### 2.6\. Refactor
+
+Looks good to me, what do you think? **No repeating code, but that sure is a lot of test code for such a small implementation detail.**
+
+Yes, it is, and you might be fine with expecting component binding to just work, but this is a TDD Kata, no new code without tests.
+
+_If we were using a module loader, (we actually are, but the code is all written as if we weren't) we could just bring in the component object and assert that the bindings are what we expect them to be...__
 
 
 ### 2.9\. End to End
