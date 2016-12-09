@@ -6,11 +6,6 @@ angular.module('hogwarts.schedule', [])
   $stateProvider.state('schedule', {
     url: '/schedule',
     component: 'wizardSchedule',
-    resolve: {
-      wizard: function(Wizards) {
-        return Wizards.getInfo(Wizards.wizard('1'));
-      },
-    },
   });
 })
 
