@@ -5,7 +5,7 @@ angular.module('hogwarts.catalog', ['ui.router'])
 
   $stateProvider.state('catalog', {
     url: '/catalog',
-    component: 'courseCatalog'
+    component: 'courseCatalog',
   });
 })
 
