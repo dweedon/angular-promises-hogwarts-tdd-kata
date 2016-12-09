@@ -1,4 +1,4 @@
 module.exports = [
-  ...require('./courses'),
-  ...require('./wizards'),
+  ...require('./courses').routes,
+  ...require('./wizards').routes,
 ];

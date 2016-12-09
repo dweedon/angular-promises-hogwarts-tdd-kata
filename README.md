@@ -113,72 +113,83 @@ Do you remember how to cast the Dependency Injection spell? **I remember now.**
 ```javascript
 ...
 
-describe('Course Catalog Module Configuration', function() {
-  var $state;
-  var $rootScope;
+describe.('courseCatalogController', function() {
+  var ctrl;
+  var mockCourses;
   var courses = ['courses'];
-  var mockCourses = {
-    getAll: sinon.stub(),
-  };
-
-  beforeEach(window.module('hogwarts', function($provide) {
-    $provide.value('Courses', mockCourses);
-  }));
-
-  beforeEach(inject(function(
-    _$state_,
-    _$rootScope_,
-  ) {
-    $state = _$state_;
-    $rootScope = _$rootScope_;
-  }));
+  var $q;
+  var $rootScope;
+  var $componentController;
 
   beforeEach(function() {
-    mockCourses.getAll.returns(courses);
-  })
+    mockCourses = { getAll: sinon.stub() };
 
-  describe('Route', function () {
+    window.module('hogwarts', function($provide) {
+      $provide.value('Courses', mockCourses);
+    });
+
+    inject(function(_$componentController_) {
+      $componentController = _$componentController_;
+    });
+  });
+
+  beforeEach(function() {
+    ctrl = $componentController('courseCatalog');
+  });
+
+  describe('on init', function() {
     it('should get a list of courses', function() {
-      $state.go('catalog');
-      $rootScope.$digest();
-
+      ctrl.$onInit();
       expect(mockCourses.getAll).to.have.been.calledOnce;
+    });
+  });
 
 ...
 ```
+What are you doing inside `beforeEach`? **We are creating a mock `Courses` service and `$provide` the mock `Courses` service for `window.module('hogwarts')`. Then we `inject` a temporary `$rootScope` Angular's `$q` service and the `$componentController` service (for instatiating our controller) into our tests.**
 
-Does it pass now? **No, but it is not erroring. I think we are making progress? We are seeing a failing test (expected getAll to be called once but was called 0 times).**
+**We use `$provide` to mock out services and give them _to_ our app, and `inject` to pull existing services and tools _from_ our app**
+
+Does it pass now? **No, still erroring, but this time because of our app code. `TypeError: ctrl.$onInit is not a function`.  I guess we should go define that.**
+
+`/client/app/catalog/catalog.controller.js`
+
+```javascript
+angular.module('hogwarts.catalog')
+
+.controller('courseCatalogController', function () {
+  'ngInject';
+
+  var vm = this;
+
+  vm.$onInit = function() {};
+});
+
+```
+
+Does it pass now? **No, but now it is not erroring. I think we are making progress? We are seeing a failing test (expected stub to have been called exactly once, but it was called 0 times).**
 
 You are on the path to enlightenment. It is wise to celebrate any failure that doesn't kill you. **Yeah!???**
-
-What are you doing inside `beforeEach`? **We are creating a mock `Courses` service and `$provide` the mock `Courses` service for `window.module('hogwarts')`. Then we `inject` a temporary `$state` and `$rootScope` into our tests.**
-
-**We use `$provide` to mock out services and give them _to_ our app, and `inject` to pull real services and tools _from_ our app**
 
 ### 1.1\. Make Test Pass
 
 How do you make it pass? **The test says the Route config needs to call getAll on the `Courses` service when the route is initialized.**
 
-`/client/app/catalog/catalog.module.js`
+`/client/app/catalog/catalog.controller.js`
 
 ```javascript
-'use strict';
+angular.module('hogwarts.catalog')
 
-angular.module('hogwarts.catalog', [])
-
-.config(function($stateProvider) {
+.controller('courseCatalogController', function (Courses) {
   'ngInject';
 
-  $stateProvider.state('catalog', {
-    url: '/catalog',
-    component: 'courseCatalog',
-    resolve: {
-      courses: function(Courses) {
-        Courses.getAll();
-      },
-    },
-  });
-})
+  var vm = this;
+
+  vm.$onInit = function() {
+    Courses.getAll();
+  };
+});
+
 ```
 
 Is it passing? **Yes!**
@@ -189,34 +200,39 @@ Put this into your Remembrall: Whenever tests are passing, time for refactoring.
 
 ### 1.2\. Failing
 
-You have completed your first test. One point for Hufflepuff. Is the story complete? **No, we are only making the call to the service, we aren't assigning it to anything! I can do that!**
+You have completed your first test. One point for Hufflepuff. Is the story complete? **No, we are only making the call to the service, we aren't binding it to the controller!**
 
 Ahem. You can write a test for that? **Oh, yes, that's what I meant.**
 
-**Etiam Dolor Scopus**
+**Etiam Dolor Bindus Controllerous**
 
-`client/app/catalog/catalog.module.spec.js`
+`client/app/catalog/catalog.controller.spec.js`
 
 ```javascript
 ...
 
-  beforeEach(inject(function(
+  beforeEach(function() {
     ...
-    _$injector_
-  ) {
+   inject(function(_$componentController_, _$q_, _$rootScope_) {
+      $componentController = _$componentController_;
+      $q = _$q_;
+      $rootScope = _$rootScope_;
+    });
+  });
+
+  describe('on init', function () {
+
     ...
-    $injector = _$injector_;
-  }));
 
-  describe('Route', function () {
+    it('should bind a list of courses to the controller', function() {
+      var courses = ['courses'];
 
-    it('resolves a list of courses', function() {
-      mockCourses.getAll.returns(courses);
+      mockCourses.getAll.returns($q.resolve(courses));
 
-      $state.go('catalog');
+      ctrl.$onInit();
       $rootScope.$digest();
 
-      expect($injector.invoke($state.current.resolve.courses)).to.equal(courses);
+      expect(ctrl.courses).to.equal(courses);
     });
 
     ...
@@ -224,16 +240,40 @@ Ahem. You can write a test for that? **Oh, yes, that's what I meant.**
 
 ### 1.2\. Passing
 
-`/client/app/catalog/catalog.module.js`
+`/client/app/catalog/catalog.controller.js`
 
 ```javascript
 ...
 
-resolve: {
-  courses: function(Courses) {
-    return Courses.getAll();
-  },
-}
+
+  vm.$onInit = function() {
+    Courses.getAll().then(function(courses) {
+      vm.courses = courses;
+    });
+  };
+
+...
+```
+
+Alright! Excelent work dealing with that promise. I see you know the $q and $rootScope.$digest spells. Tell me more about how they work. **I'm using angular's $q to make getAll return a promise that resolves to `courses` since that is what the service really does. We can't just synchronously make calls to the API, that would be blocking! I want to use Angular's $q service instead of native promises or a library like (big) Q or Bluebird. $q is tied into Angular's $digest cycle, which makes it a lot easier to work with in our tests.**
+
+Excelent, is it working. **Yes, but now my other test is broken, `      TypeError: Cannot read property 'then' of undefined`. I think I see the problem.
+
+### 1.2\. Both Passing
+
+`/client/app/catalog/catalog.controller.spec.js`
+
+```javascript
+...
+
+describe('on init', function() {
+    it('should get a list of courses', function() {
+      var courses = ['courses'];
+
+      mockCourses.getAll.returns($q.resolve(courses));
+      
+      ctrl.$onInit();
+
 ...
 ```
 
@@ -241,16 +281,17 @@ resolve: {
 
 Does this need refactoring? **Looks like we are repeating a block of code in our two tests, lets clean it up.**
 
-`client/app/catalog/catalog.module.spec.js`
+`client/app/catalog/catalog.controller.spec.js`
 
 ```javascript
 ...
 
-  describe('Route', function() {
-    beforeEach(function() {
-      mockCourses.getAll.returns(courses);
+  describe('on init', function() {
+    var courses = ['courses'];
 
-      $state.go('catalog');
+    beforeEach(function() {
+      mockCourses.getAll.returns($q.resolve(courses));
+      ctrl.$onInit();
       $rootScope.$digest();
     });
 
@@ -258,12 +299,25 @@ Does this need refactoring? **Looks like we are repeating a block of code in our
       expect(mockCourses.getAll).to.have.been.calledOnce;
     });
 
-    it('resolves a list of courses', function() {
-      expect($injector.invoke($state.current.resolve.courses)).to.equal(courses);
+    it('should bind a list of courses to the controller', function() {
+      expect(ctrl.courses).to.equal(courses);
     });
+  });
 
-    ...
+...
 ```
+So are we finished with the story? **No, Professor Longbottom. Before calling a story done, it must be tested and deployed.**
+
+But this is only a Kata, we will start on the real work next week when you have a pair. **Ok, I won't deploy it and I won't write automated acceptance tests. But I must inspect my beautiful work (and make sure it is working).**
+
+### 1.4\. End to End
+
+You can see it by loading `localhost:3000` into your browser and clicking on Catalog (at the top). **I am seeing the page now.**
+
+Well done, young Wizard. You have finished your story. Another point for Hufflepuff. **Thank you, I like the write the test, see it fail, write code to make it pass, and then refactor rhythm. I also like seeing what the end user sees.**
+
+
+TODO: move to other test
 
 ### 1.3\. Failing
 
@@ -334,19 +388,13 @@ So are we finished with the story? **No, Professor Longbottom. Before calling a 
 
 But this is only a Kata, we will start on the real work next week when you have a pair. **Ok, I won't deploy it and I won't write automated acceptance tests. But I must inspect my beautiful work (and make sure it is working).**
 
-### 1.4\. End to End
-
-You can see it by loading `localhost:3000` into your browser and clicking on Catalog (at the top). **I am seeing the page now.**
-
-Well done, young Wizard. You have finished your story. Another point for Hufflepuff. **Thank you, I like the write the test, see it fail, write code to make it pass, and then refactor rhythm. I also like seeing what the end user sees.**
-
 // TODO: Update this to the promise based code
 
 ## 2\. Story: Register for Courses
 
 Acceptance: Students register in course catalog then view their courses in schedule.
 
---------------------------------------------------------------------------------
+---
 
 ### 2.0\. UI for Registration
 
@@ -354,77 +402,95 @@ You have shown us how to test getting from a repository and displaying the resul
 
 That works for now. **Here is the updated catalog.html**
 
-`app/catalog/catalog.html`
+`client/app/catalog/catalog.template.html`
 
 ```html
 ...
 
-                <tr ng-repeat="course in catalog">
+        <tr ng-repeat="course in vm.courses">
+          
+          ...
 
-                    ...
-
-                    <td>
-                        <a href="javascript:void(0);" ng-click="register(course.id)">
-                            Register
-                        </a>
-                    </td>
-                </tr>
+          <td>
+            <a href ng-click="vm.register(course.courseNumber)">Register</a>
+          </td>
+        </tr>
 ```
 
-We need a place to see the registered courses. **Someone else already put it inside `wizard/schedule.html`**
+We need a place to see the registered courses. **Someone else already put it inside `schedule/schedule.template.html`**
 
-Hmm, I am seeing duplication between the your course catalog and their schedule. **Yes, I will take care of that later with a `ng-include`.**
+Hmm, I am seeing duplication between the your course catalog and their schedule. **Yes, I will take care of that later with a `component`.**
 
 OK. Where do you want to start? **In the course catalog controller of course.**
 
-### 2.1\. Erroring
+### 2.1\. Failing
 
 Don't you mean the course catalog controller spec. **Yes, Professor; this is a TDD Kata, after all.**
 
-`test/catalog/catalog-controller-specs.js`
+`client/app/catalog/catalog.controller.spec.js`
 
 ```javascript
 ...
 
-    var mockCatalogRepository,
+  var mockCourses;
+  var mockRegistration;
 
-        mockRegistrationService,
+  ...
+  beforeEach(function() {
+    mockCourses = { getAll: sinon.stub() };
+    mockRegistration = { register: sinon.stub() };
 
-      ...
-
-        inject(function ( ... , registrationService) {
-
-            ...
-
-            mockRegistrationService = sinon.stub(registrationService);
-
-            ...
-
-            $controller("CatalogController", {
-                ... ,
-                registrationService: mockRegistrationService
-            });
-
-      ...
-
-    describe('when registering for a course', function() {
-        var courseId = 'courseId';
-        var response = {success: true, message: ''};
-
-        it('adds the course to the wizard\'s schedule', function() {
-            mockRegistrationService.register.returns(response);
-            scope.register(courseId);
-            sinon.assert.calledWith(mockRegistrationService.register, courseId);
-        });
-
+    window.module('hogwarts', function($provide) {
+      $provide.value('Courses', mockCourses);
+      $provide.value('Registration', mockRegistration);
     });
+  ...
+
+  describe('when registering for a course', function() {
+      var courseId = 'courseId';
+      var response = {success: true, message: ''};
+
+      it('adds the course to the wizard\'s schedule', function() {
+          mockRegistration.register.returns($q.resolve(response));
+
+          ctrl.register(courseId);
+          $rootScope.$digest();
+
+          expect(mockRegistration.register).to.have.been.calledWith(courseId);
+      });
+
+  });
 
 });
 ```
 
-You have done amazing work. You added a `mockRegistrationService` and stubbed it at the top level. You have mocked it inside a new `describe` block and written a test that says we are delegating the add course to the `registrationService`. **Thank you. But when I run the tests, They are all erroring!**
+You have done amazing work. You added a `mockRegistrationService` and stubbed it at the top level. You have mocked it inside a new `describe` block and written a test that says we are delegating the add course to the `registrationService`. **Thank you.** 
 
-### 2.1\. Failing
+You have one test failing. **My error now says `TypeError: ctrl.register is not a function`. Oh, duh, I need to implement the function register() in the `courseCatalogController`.**
+
+Professional Wizards do not normally say 'Duh.' **Yes, Professor. I mean, No, Professor.**
+
+### 2.1\. Passing
+
+In order to do that you will need to? **Um... I need to inject the `Registration` into the the `courseCatalogController` so that I can call it.**
+
+`client/app/catalog/catalog.controller.js`
+
+```javascript
+...
+
+.controller('courseCatalogController', function (Courses, Registration) {
+  ...
+
+  vm.register = function(courseNumber) {
+    Registration.register(courseNumber);
+  };
+});
+```
+
+Very good, you remembered to run the tests again. **Yes, it worked!**
+
+### 2.2 Failing
 
 Yes, it's a tricky spell, isn't it? **Yes. I think I need to define the `register` method on the `registrationService` in the `wizard` directory so the mocking framework knows how to stub it.**
 
@@ -442,65 +508,47 @@ hogwartsApp
 });
 ```
 
-Very good, you have one test failing, you're almost there. **My error now says "scope.register is not a function". Oh, duh, I need to implement the function register() in the CatalogController.**
+### 2.2\. Failing
 
-Professional Wizards do not normally say 'Duh.' **Yes, Professor. I mean, No, Professor.**
+Next we need to show the student the result of their registration attempt. **I will put the `Registration` response on the controller so the UI can access it.**
 
-### 2.1\. Passing
-
-In order to do that you will need to? **Um... I need to inject the `registrationService` into the the `CatalogController` so that I can call it.**
-
-`app/catalog/catalog-controller.js`
+`client/app/catalog/catalog.controller.spec.js`
 
 ```javascript
 ...
 
-.controller("CatalogController", function ( ... , registrationService) {
+  describe('when registering for a course', function() {
 
     ...
 
-    $scope.register = function(courseId) {
-        registrationService.register(courseId);
-    };
+    it('binds the registration response to the controller', function() {
+      mockRegistration.register.returns($q.resolve(response));
 
-});
-```
+      ctrl.register(courseId);
+      $rootScope.$digest();
 
-Very good, you remembered to run the tests again. **Yes, it worked!**
-
-### 2.2\. Failing
-
-Next we need to show the student the result of their registration attempt. **I will put the `registrationService` response on the scope so the UI can access it.**
-
-`test/catalog/catalog-controller-specs.js`
-
-```javascript
-...
-
-    describe('when registering for a course', function() {
-
-        ...
-
-        it('adds the registration response to the scope', function() {
-            mockRegistrationService.register.returns(response);
-            scope.register(courseId);
-            expect(scope.response).toEqual(response);
-        });
+      expect(ctrl.response).to.equal(response);
+    });
 
     ...
 ```
 
 ### 2.2\. Passing
 
-And to get it passing... **That is as simple as adding `$scope.response =`**
+And to get it passing... **That is as simple as 'thening' the promise to get the response.**
 
-`app/catalog/catalog-controller.js`
+`client/app/catalog/catalog.controller.js`
 
 ```javascript
 ...
 
-    $scope.register = function(courseId) {
-        $scope.response = registrationService.register(courseId);
+  vm.register = function(courseNumber) {
+    Registration.register(courseNumber).then(function(response) {
+      vm.response = response;
+    });
+  };
+});
+
 ```
 
 ### 2.2\. Refactor
@@ -514,46 +562,43 @@ I smell duplication in the test. **Yes and I am willing to remove it, while all 
 ```javascript
 ...
 
-    describe('when registering for a course', function() {
-
-        ...
-
-        beforeEach(function() {
-            mockRegistrationService.register.returns(response);
-            scope.register(courseId);
-        });
-
-        it('adds the course to the wizard\'s schedule', function() {
-            sinon.assert.calledWith(mockRegistrationService.register, courseId);
-        });
-
-        it('adds the registration response to the scope', function() {
-            expect(scope.response).toEqual(response);
-        });
+    beforeEach(function() {
+      mockRegistration.register.returns($q.resolve(response));
+      ctrl.register(courseId);
+      $rootScope.$digest();
     });
+
+    it('adds the course to the wizard\'s schedule', function() {
+      expect(mockRegistration.register).to.have.been.calledWith(courseId);
+    });
+
+    it('binds the registration response to the controller', function() {
+      expect(ctrl.response).to.equal(response);
+    });
+
+...
 ```
 
 Are your tests still passing? **Yes.**
 
-Are you finished with this story? **No. We are delegating to the `registrationService` which we haven't written yet! Of course, I will write a test for `registrationService` first.**
+Are you finished with this story? **No. We are delegating to the `Registration` which we haven't written yet, we are only mocking it! Of course, I will write a test for `Registration` first.**
 
 ### 2.3\. Erroring
 
-`test/wizard/registration-service-specs.js`
+`client/app/providers/registration.service.spec.js`
 
 ```javascript
-describe('registrationService', function () {
+describe('Registration Service', function() {
+  describe('when registering for a course', function() {
+    var courseNumber = 'courseNumber';
+    var wizard = 'wizard';
 
-    describe('when registering for a course', function () {
-        var course = {id: 'Potions'};
+    it('saves the course to the wizard repository', function() {
+      mockWizards.wizard.returns(wizard);
+      Registration.register(courseNumber);
 
-        it ('saves the course to the wizardRepository', function() {
-            service.register(course.id);
-            sinon.assert.calledWith(
-                mockWizardRepository.save, {courses: {'Potions' : course}}
-            );
-        });
-
+      expect(mockWizards.wizard).to.have.been.calledWith('1');
+      expect(mockWizards.addCourse).to.have.been.calledWith(wizard, courseNumber);
     });
 
     ...
@@ -563,184 +608,236 @@ You have a test that clearly states your intent: registering leads to a new cour
 
 **Invertere Injicio Dependeo**
 
-### 2.3\. Failing
+### 2.3\. Erroring
 
-Looking at your test, you obviously need a `mockWizardRepository` that has a `save` method. But how are you going to convert `course.id` into a `course`? **I am going to get all the courses from the `catalogRepository` and then iterate over them until I find the one I want.**
+Looking at your test, you obviously need a `mockWizards` that has `wizard` and `addCourse` methods.
 
-That would have the code smell: _Inappropriate intimacy_. Can you think of another way? **Oops, I just missed the method `getCourse(courseId)` on the `catalogRepository`. I will call that one instead.**
-
-**Notice registration service tests are in the `wizard` directory.**
-
-`test/wizard/registration-service-specs.js`
+`client/app/providers/registration.service.spec.js`
 
 ```javascript
-describe('registrationService', function () {
+describe('Registration Service', function () {
+  var Registration;
+  var mockWizards;
 
-    var service,
-        mockCatalogRepository,
-        mockWizardRepository;
+  beforeEach(function() {
+    mockWizards = { 
+      wizard: sinon.stub(),
+      addCourse: sinon.stub(),
+    };
 
-    beforeEach(function () {
-        module("hogwartsApp");
-
-        inject(function (registrationService, catalogRepository, wizardRepository) {
-            service = registrationService;
-            mockCatalogRepository = sinon.stub(catalogRepository);
-            mockWizardRepository = sinon.stub(wizardRepository);
-        });
+    window.module('hogwarts', function($provide) {
+      $provide.value('Wizards', mockWizards);
     });
 
-    describe('when registering for a course', function () {
+    inject(function(_Registration_) {
+      Registration = _Registration_;
+    });
+  });
 
-        ...
+  describe('when registering for a course', function() {
+    var courseNumber = 'courseNumber';
+    var wizard = 'wizard';
 
-        beforeEach(function() {
-            mockCatalogRepository.getCourse.returns(course);
-            mockWizardRepository.get.returns({courses: {}});
-        });
+    beforeEach(function() {
+      mockWizards.wizard.returns(wizard);
+    });
 
-        ...
+  ...
+```
+
+### 2.3\. Failing
+
+`Unknown provider: RegistrationProvider`
+
+`client/app/proviers/registration.service.js`
+
+```javascript
+angular.module('hogwarts.providers')
+
+.factory('Registration', function() {
+  'ngInject';
+
+  return {
+    register: function() {
+
+    },
+  };
+});
 ```
 
 ### 2.3\. Passing
+`expected stub to have been called with arguments wizards`
 
-`app/wizard/registration-service.js`
+`client/app/proviers/registration.service.js`
 
 ```javascript
-hogwartsApp
-.factory('registrationService', function(catalogRepository, wizardRepository) {
-    return {
-        register: function(courseId) {
-            var course = catalogRepository.getCourse(courseId),
-                wizard = wizardRepository.get();
+...
+  
+.factory('Registration', function(Wizards) {
 
-            wizard.courses[course.id] = course;
-            wizardRepository.save(wizard);
-        }
-    };
+  ...
 
-});
+    register: function(courseNumber) {
+      var wizard = Wizards.wizard('1');
+      Wizards.addCourse(wizard, courseNumber);
+    },
+
+...
+
 ```
 
 ### 2.3\. Refactor
 
-What does the last two lines do? **It registers the wizard for the course.**
 
-Can you clarify it in code? **You mean extract the last 2 lines into a method.** Yes.
-
-**Accio Extractum Modious**
-
-`app/wizard/registratioioion-service.js`
+`client/app/proviers/registration.service.js`
 
 ```javascript
 ...
 
-        register: function(courseId) {
-            var course = catalogRepository.getCourse(courseId),
-            wizard = wizardRepository.get();
-
-            registerWizardForCourse(wizard, course);
-        }
-    };
-
-    function registerWizardForCourse(wizard, course) {
-        wizard.courses[course.id] = course;
-        wizardRepository.save(wizard);
-    }
+    register: function(courseNumber) {
+      Wizards.addCourse(Wizards.wizard('1'), courseNumber);
+    },
 
 ...
 ```
 
 ### 2.4\. Failing
 
-A service should always return a response. **You mean something like this?**
+A service should always return a response, in this case, we can chain off the promise that the `wizard.addCourse` will return. **You mean something like this?**
 
 **Responsum Exspectant**
 
-`test/wizard/registration-service-specs.js`
+`client/app/proviers/registration.service.spec.js`
 
 ```javascript
 ...
 
-    describe('when registering for a course', function () {
+  describe('when registering for a course', function() {
+    ...
 
-        ...
+    beforeEach(function() {
+      mockWizards.wizard.returns(wizard);
+      mockWizards.addCourse.returns(Promise.resolve());
+    });
 
-        it('returns a success response', function () {
-            var response = service.register(course.id);
-            expect(response.success).toBeTruthy();
-        });
+    ...
+
+    it('returns a success response', function() {
+      var response = Registration.register(courseNumber);
+
+      return response.then(function(res) {
+        expect(res.success).to.be.ok;
+      });
+    });
 
     ...
 ```
 
-Exactly!
+Sure, you can do it that way. You could also inject the `$q`, `$rootScope` and call a `$digest` before making your assertion. That is particularly useful if you chain several times, but this way is fine, especially in cases like this.
 
 ### 2.4\. Passing
 
-`app/wizard/registration-service.js`
+`client/app/proviers/registration.service.js`
 
 ```javascript
 ...
 
-        register: function(courseId) {
-
-            ...
-
-            return registerWizardForCourse(wizard, course);
-
-    ...
-
-    function registerWizardForCourse(wizard, course) {
-
-        ...
-
-        return {success: true};
-    }
+    register: function(courseNumber) {
+      return Wizards.addCourse(Wizards.wizard('1'), courseNumber)
+        .then(function() {
+          return { success: true };
+        });
+    },
 
 ...
 ```
+
+### 2.4\. Refactor
+
+`client/app/proviers/registration.service.spec.js`
+
+```javascript
+...
+
+  describe('when registering for a course', function() {
+    var courseNumber = 'courseNumber';
+    var wizard = 'wizard';
+    var response;
+
+    beforeEach(function() {
+      mockWizards.wizard.returns(wizard);
+      mockWizards.addCourse.returns(Promise.resolve());
+      response = Registration.register(courseNumber);
+    });
+
+    it('saves the course to the wizard repository', function() {
+      expect(mockWizards.wizard).to.have.been.calledWith('1');
+      expect(mockWizards.addCourse).to.have.been.calledWith(wizard, courseNumber);
+    });
+
+    it('returns a success response', function() {
+      return response.then(function(res) {
+        expect(res.success).to.be.ok;
+      });
+    });
+  });
+```
+
 
 ### 2.5\. Failing
 
 How will the student know if they are really registered? **They will see their courses on the schedule page.**
 
-How will they see their courses on the schedule page? **Hmm, let's see. The schedule.html is already written. It looks like it expects a wizard object on the scope. The `wizard` has `courses`.**
+How will they see their courses on the schedule page? **Hmm, let's see. The `schedule.template.html` is already written. It looks like it expects a wizard object on the controller. The `wizard` has `courses`.**
 
-You are indeed a very promising young wizard. **I will write tests for the schedule controller. I'm writing both tests because the code to pass them is one line.**
+You are indeed a very promising young wizard. **I will write tests for the schedule controller. I'm going to try this one a different way. I will resolve the data before the view is loaded.**
 
-`test/wizard/schedule-controller-specs.js`
+`app/catalog/schedule/schedule.module.spec.js`
 
 ```javascript
-describe('ScheduleController', function () {
-    var scope, mockWizardRepository;
-    var wizard = {courses: {'foo': {id: 'foo'}}};
+describe('Wizard Schedule Module Configuration', function() {
+  var $state;
+  var $rootScope;
+  var $injector;
+  var mockWizards;
 
-    beforeEach(function () {
-        module("hogwartsApp");
+  beforeEach(function() {
+    mockWizards =  {
+      wizard: sinon.stub(),
+      getInfo: sinon.stub(),
+    };
 
-        inject(function ($rootScope, $controller, wizardRepository) {
-            scope = $rootScope.$new();
+    window.module('hogwarts', function($provide) {
+      $provide.value('Wizards', mockWizards);
+    });
+  });
 
-            mockWizardRepository = sinon.stub(wizardRepository);
-            mockWizardRepository.get.returns(wizard);
+  beforeEach(inject(function(_$state_, _$rootScope_, _$injector_) {
+    $state = _$state_;
+    $rootScope = _$rootScope_;
+    $injector = _$injector_;
+  }));
 
-            $controller("ScheduleController", {
-                $scope: scope,
-                wizardRepository: mockWizardRepository
-            });
-        });
+  describe('Route', function() {
+    it('should respond to URL', function() {
+      expect($state.href('schedule')).to.equal('/schedule');
     });
 
-    describe('when the controller first loads', function () {
-        it('gets the wizard from the repository', function () {
-            sinon.assert.calledOnce(mockWizardRepository.get);
-        });
+    it('should get a wizard', function() {
+      var wizardRoute = 'wizardRoute';
+      var wizardInfo = 'wizardInfo';
 
-        it('puts wizard on the scope', function() {
-            expect(scope.wizard).toEqual(wizard)
-        });
+      mockWizards.wizard.returns(wizardRoute);
+      mockWizards.getInfo.returns(wizardInfo);
+
+      $state.go('schedule');
+      $rootScope.$digest();
+
+      expect(mockWizards.wizard).to.have.been.calledWith('1');
+      expect(mockWizards.getInfo).to.have.been.calledWith(wizardRoute);
+      expect($injector.invoke($state.current.resolve.wizard)).to.equal(wizardInfo);
     });
+  });
 });
 ```
 
@@ -748,14 +845,88 @@ describe('ScheduleController', function () {
 
 You can make the tests pass? **Yes, this is less painful than drinking a Polyjuice Potion:**
 
-`app/wizard/schedule-controller.js`
+`client/app/schedule/schedule.module.js`
 
 ```javascript
-hogwartsApp
-.controller("ScheduleController", function ($scope, wizardRepository) {
-    $scope.wizard = wizardRepository.get();
+
+...
+
+  $stateProvider.state('schedule', {
+    url: '/schedule',
+    component: 'wizardSchedule',
+    resolve: {
+      wizard: function(Wizards) {
+        return Wizards.getOne('1');
+      },
+    },
+  });
+
+...
 });
 ```
+
+### 2.6\. Failing
+
+Now we bind it to the component
+
+`client/app/schedule/schedule.component.spec.js`
+
+```javascript
+
+/* eslint-disable angular/window-service */
+
+describe('wizardSchedule Component', function() {
+  var ctrl;
+  var $scope;
+  var $compile;
+  var wizard = 'wizard';
+
+  beforeEach(function() {
+    window.module('hogwarts');
+
+    inject(function($rootScope, _$compile_) {
+      $scope = $rootScope.$new();
+      $compile = _$compile_;
+    });
+  });
+
+  describe('bindings', function() {
+    beforeEach(function() {
+      var element = $compile(angular.element(
+        '<wizard-schedule wizard="wizard"></course-catalog>'
+      ))($scope);
+
+      $scope.wizard = wizard;
+      $scope.$apply();
+
+      ctrl = element.controller('wizardSchedule');
+    });
+
+    it('should bind courses to the controller', function() {
+      expect(ctrl.wizard).to.equal(wizard);
+    });
+  });
+});
+
+```
+### 2.6\. Passing
+
+`client/app/schedule/schedule.component.js`
+
+```javascript
+angular.module('hogwarts.schedule')
+
+.component('wizardSchedule', {
+  restrict: 'E',
+  bindings: {
+    wizard: '<',
+  },
+  controllerAs: 'vm',
+  templateUrl: 'schedule.template.html',
+});
+
+```
+
 
 ### 2.9\. End to End
 

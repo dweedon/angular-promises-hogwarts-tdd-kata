@@ -1,16 +1,11 @@
-angular.module('hogwarts.catalog', [])
+angular.module('hogwarts.catalog', ['ui.router'])
 
 .config(function($stateProvider) {
   'ngInject';
 
   $stateProvider.state('catalog', {
     url: '/catalog',
-    component: 'courseCatalog',
-    resolve: {
-      courses: function(Courses) {
-        return Courses.getAll();
-      },
-    },
+    component: 'courseCatalog'
   });
 })
 

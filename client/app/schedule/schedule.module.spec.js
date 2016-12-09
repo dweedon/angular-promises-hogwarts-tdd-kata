@@ -4,26 +4,23 @@ describe('Wizard Schedule Module Configuration', function() {
   var $state;
   var $rootScope;
   var $injector;
-  var $templateCache;
-  var wizard = 'wizard';
-  var mockWizardService = {
-    getOne: sinon.stub(),
-  };
+  var mockWizards;
 
-  beforeEach(window.module('hogwarts', function($provide) {
-    $provide.value('Wizards', mockWizardService);
-  }));
+  beforeEach(function() {
+    mockWizards =  {
+      wizard: sinon.stub(),
+      getInfo: sinon.stub(),
+    };
 
-  beforeEach(inject(function(
-    _$state_,
-    _$rootScope_,
-    _$injector_,
-    _$templateCache_
-  ) {
+    window.module('hogwarts', function($provide) {
+      $provide.value('Wizards', mockWizards);
+    });
+  });
+
+  beforeEach(inject(function(_$state_, _$rootScope_, _$injector_) {
     $state = _$state_;
     $rootScope = _$rootScope_;
     $injector = _$injector_;
-    $templateCache = _$templateCache_;
   }));
 
   describe('Route', function() {
@@ -32,18 +29,18 @@ describe('Wizard Schedule Module Configuration', function() {
     });
 
     it('should get a wizard', function() {
-      mockWizardService.getOne.returns(wizard);
+      var wizardRoute = 'wizardRoute';
+      var wizardInfo = 'wizardInfo';
+
+      mockWizards.wizard.returns(wizardRoute);
+      mockWizards.getInfo.returns(wizardInfo);
 
       $state.go('schedule');
       $rootScope.$digest();
 
-      expect($injector.invoke($state.current.resolve.wizard)).to.equal(wizard);
-    });
-  });
-
-  describe('Template', function() {
-    it('should have a template', function() {
-      expect($templateCache.get('schedule.template.html')).to.be.ok;
+      expect(mockWizards.wizard).to.have.been.calledWith('1');
+      expect(mockWizards.getInfo).to.have.been.calledWith(wizardRoute);
+      expect($injector.invoke($state.current.resolve.wizard)).to.equal(wizardInfo);
     });
   });
 });

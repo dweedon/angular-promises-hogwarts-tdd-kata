@@ -2,25 +2,49 @@
 
 describe('courseCatalogController', function() {
   var ctrl;
-  var $rootScope;
+  var mockCourses;
+  var mockRegistration;
   var $q;
-  var mockRegistration = { register: sinon.stub() };
-  var mockCourses = { getAll: sinon.stub() };
+  var $rootScope;
+  var $componentController;
 
-  beforeEach(window.module('hogwarts', function($provide) {
-    $provide.value('Courses', mockCourses);
-    $provide.value('Registration', mockRegistration);
-  }));
+  beforeEach(function() {
+    mockCourses = { getAll: sinon.stub() };
+    mockRegistration = { register: sinon.stub() };
 
-  beforeEach(inject(function(
-    $componentController,
-    _$rootScope_,
-    _$q_
-  ) {
+    window.module('hogwarts', function($provide) {
+      $provide.value('Courses', mockCourses);
+      $provide.value('Registration', mockRegistration);
+    });
+
+    inject(function(_$componentController_, _$q_, _$rootScope_) {
+      $componentController = _$componentController_;
+      $q = _$q_;
+      $rootScope = _$rootScope_;
+    });
+  });
+
+  beforeEach(function() {
     ctrl = $componentController('courseCatalog');
-    $rootScope = _$rootScope_;
-    $q = _$q_;
-  }));
+  });
+
+  describe('on init', function() {
+    var courses = ['courses'];
+
+    beforeEach(function() {
+      mockCourses.getAll.returns($q.resolve(courses));
+      ctrl.$onInit();
+      $rootScope.$digest();
+    });
+
+    it('should get a list of courses', function() {
+      expect(mockCourses.getAll).to.have.been.calledOnce;
+    });
+
+    it('should bind a list of courses to the controller', function() {
+      expect(ctrl.courses).to.equal(courses);
+    });
+  });
 
   describe('when registering for a course', function() {
     var courseId = 'courseId';
@@ -29,7 +53,6 @@ describe('courseCatalogController', function() {
     beforeEach(function() {
       mockRegistration.register.returns($q.resolve(response));
       ctrl.register(courseId);
-
       $rootScope.$digest();
     });
 
@@ -38,7 +61,7 @@ describe('courseCatalogController', function() {
     });
 
     it('binds the registration response', function() {
-      expect(ctrl.response).to.deep.equal(response);
+      expect(ctrl.response).to.equal(response);
     });
   });
 });

@@ -2,38 +2,44 @@
 
 describe('Registration Service', function() {
   var Registration;
+  var mockWizards;
 
-  var mockOne = {
-    post: sinon.stub(),
-  };
-  var mockApi = {
-    one: sinon.stub().returns(mockOne),
-  };
+  beforeEach(function() {
+    mockWizards = {
+      wizard: sinon.stub(),
+      addCourse: sinon.stub(),
+    };
 
-  beforeEach(window.module('hogwarts', function($provide) {
-    $provide.value('api', mockApi);
-  }));
+    window.module('hogwarts', function($provide) {
+      $provide.value('Wizards', mockWizards);
+    });
 
-  beforeEach(inject(function(_Registration_) {
-    Registration = _Registration_;
-  }));
+    inject(function(_Registration_) {
+      Registration = _Registration_;
+    });
+  });
+
 
   describe('when registering for a course', function() {
     var courseNumber = 'courseNumber';
-    var response = 'response';
+    var wizard = 'wizard';
+    var response;
 
     beforeEach(function() {
-      mockOne.post.returns(response);
+      mockWizards.wizard.returns(wizard);
+      mockWizards.addCourse.returns(Promise.resolve());
+      response = Registration.register(courseNumber);
     });
 
     it('saves the course to the wizard repository', function() {
-      Registration.register(courseNumber);
-      expect(mockApi.one).to.have.been.calledWith('wizards', '1');
-      expect(mockOne.post).to.have.been.calledWith('courses', { courseNumber: courseNumber });
+      expect(mockWizards.wizard).to.have.been.calledWith('1');
+      expect(mockWizards.addCourse).to.have.been.calledWith(wizard, courseNumber);
     });
 
-    it('returns the response', function() {
-      expect(Registration.register(courseNumber)).to.equal(response);
+    it('returns a success response', function() {
+      return response.then(function(res) {
+        expect(res.success).to.be.ok;
+      });
     });
   });
 });

@@ -1,55 +1,61 @@
-module.exports = [
-  {
-    method: 'POST',
-    path: '/wizards/{id}/courses',
-    handler: ({ params, payload }, reply) => {
-      const wizard = getOne(wizards, params.id);
-      !wizard.courses.some(c => payload.courseNumber === c) && wizard.courses.push(payload.courseNumber);
-      reply().code(201);
+const courses = require('./courses');
+
+
+module.exports = {
+  routes: [
+    {
+      method: 'POST',
+      path: '/wizards/{id}/courses',
+      handler: ({ params, payload }, reply) => {
+        const wizard = getOne(wizards, params.id);
+        !wizard.courses.some(c => payload.courseNumber === c) && wizard.courses.push(payload.courseNumber);
+        reply().code(201);
+      },
     },
-  },
-  {
-    method: 'GET',
-    path: '/wizards',
-    handler:(request, reply) => reply(getAll(wizards)),
-  },
-  {
-    method: 'GET',
-    path: '/wizards/{id}',
-    handler: (request, reply) => {
-      const wizard = getOne(wizards, request.params.id);
-      return wizard ? reply(wizard) : reply().code(404);
+    {
+      method: 'GET',
+      path: '/wizards',
+      handler:(request, reply) => reply(getAll(wizards)),
     },
-  },
-  {
-    method: 'PUT',
-    path: '/wizards/{id}',
-    handler: (request, reply) => {
-      const wizard = getOne(wizards, request.params.id);
-      wizard ? updateOne(wizard, request.payload) && reply().code(202) : reply().code(404);
+    {
+      method: 'GET',
+      path: '/wizards/{id}',
+      handler: (request, reply) => {
+        const wizard = getOne(wizards, request.params.id);
+        wizard.courses = wizard.courses.map(courses.getOne);
+        return wizard ? reply(wizard) : reply().code(404);
+      },
     },
-  },
-  {
-    method: 'POST',
-    path: '/wizards',
-    handler: (request, reply) => {
-      try {
-        createOne(wizards, request.payload) && reply().code(201);
-      } catch (e) {
-        return reply(e).code(500);
-      }
+    {
+      method: 'PUT',
+      path: '/wizards/{id}',
+      handler: (request, reply) => {
+        const wizard = getOne(wizards, request.params.id);
+        wizard ? updateOne(wizard, request.payload) && reply().code(202) : reply().code(404);
+      },
     },
-  },
-  {
-    method: 'DELETE',
-    path: '/wizards/{id}',
-    handler: (request, reply) => {
-      getOne(wizards, request.params.id)
-        ? deleteOne(wizards, request.params.id) && reply().code(202)
-        : reply().code(404);
+    {
+      method: 'POST',
+      path: '/wizards',
+      handler: (request, reply) => {
+        try {
+          createOne(wizards, request.payload) && reply().code(201);
+        } catch (e) {
+          return reply(e).code(500);
+        }
+      },
     },
-  },
-];
+    {
+      method: 'DELETE',
+      path: '/wizards/{id}',
+      handler: (request, reply) => {
+        getOne(wizards, request.params.id)
+          ? deleteOne(wizards, request.params.id) && reply().code(202)
+          : reply().code(404);
+      },
+    },
+  ],
+};
 
 const ids = () => {
   let next = 0;

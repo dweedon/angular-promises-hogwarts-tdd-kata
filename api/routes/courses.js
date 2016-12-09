@@ -1,17 +1,4 @@
-module.exports = [
-  {
-    method: 'GET',
-    path: '/courses',
-    handler:(request, reply) => reply(getAll(courses)),
-  },
-  {
-    method: 'GET',
-    path: '/courses/{id}',
-    handler: (request, reply) => reply(getOne(courses, request.params.id)),
-  },
-];
-
-const getAll = (courses) => courses.map(c => ({
+const getAll = () => courses.map(c => ({
   courseNumber: c.courseNumber,
   name: c.name,
   startTime: c.startTime,
@@ -19,7 +6,7 @@ const getAll = (courses) => courses.map(c => ({
   credits: c.credits,
 }));
 
-const getOne = (courses, id) => courses.find(c => c.courseNumber === id);
+const getOne = (id) => courses.find(c => c.courseNumber === id);
 
 const courses = [
   {
@@ -125,3 +112,21 @@ const courses = [
     equipment: ["Wand"],
   },
 ];
+
+module.exports = {
+  getAll: getAll,
+  getOne: getOne,
+  routes: [
+    {
+      method: 'GET',
+      path: '/courses',
+      handler:(request, reply) => reply(getAll()),
+    },
+    {
+      method: 'GET',
+      path: '/courses/{id}',
+      handler: (request, reply) => reply(getOne(request.params.id)),
+    },
+  ],
+};
+

@@ -8,7 +8,7 @@ angular.module('hogwarts.schedule', [])
     component: 'wizardSchedule',
     resolve: {
       wizard: function(Wizards) {
-        return Wizards.getOne('1');
+        return Wizards.getInfo(Wizards.wizard('1'));
       },
     },
   });

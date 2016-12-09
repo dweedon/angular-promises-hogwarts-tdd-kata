@@ -1,6 +1,6 @@
 /* eslint-disable angular/window-service */
 
-describe('Registration Service', function() {
+describe('Courses Service', function() {
   var Courses;
   var result;
   var courseNumber = 'courseNumber';

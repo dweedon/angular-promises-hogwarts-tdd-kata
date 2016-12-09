@@ -1,12 +1,14 @@
 angular.module('hogwarts.providers')
 
-.factory('Registration', function(api) {
+.factory('Registration', function(Wizards) {
   'ngInject';
 
   return {
     register: function(courseNumber) {
-      return api.one('wizards', '1')
-        .post('courses', { courseNumber: courseNumber });
+      return Wizards.addCourse(Wizards.wizard('1'), courseNumber)
+        .then(function() {
+          return { success: true };
+        });
     },
   };
 });

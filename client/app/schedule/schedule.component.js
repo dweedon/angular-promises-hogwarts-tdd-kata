@@ -5,5 +5,6 @@ angular.module('hogwarts.schedule')
   bindings: {
     wizard: '<',
   },
+  controllerAs: 'vm',
   templateUrl: 'schedule.template.html',
 });
